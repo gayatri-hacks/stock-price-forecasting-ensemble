@@ -1,0 +1,10 @@
+{
+    "AAPL": {
+        "LSTM_RMSE": 0.4493066072463989,
+        "LSTM_MAE": 0.26096224784851074,
+        "LSTM_Directional_Accuracy": 0.49557522123893805,
+        "Transformer_RMSE": 0.332324355840683,
+        "Transformer_MAE": 0.314664751291275,
+        "Transformer_Directional_Accuracy": 0.5172413793103449
+    }
+}

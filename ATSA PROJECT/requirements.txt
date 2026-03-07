@@ -1,0 +1,37 @@
+# Core Data Science (Python 3.12 compatible versions with pre-built wheels)
+pandas>=2.1.0
+numpy>=1.26.0
+scikit-learn>=1.3.0
+
+# Time Series Analysis
+statsmodels>=0.14.0
+pmdarima>=2.0.4
+prophet>=1.1.5
+yfinance>=0.2.28
+
+# Deep Learning (TensorFlow 2.15 has Python 3.12 support, PyTorch 2.1+)
+tensorflow>=2.15.0
+keras>=3.0.0
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Explainability & Visualization
+shap>=0.43.0
+lime>=0.2.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+plotly>=5.17.0
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.66.0
+joblib>=1.3.1
+python-dateutil>=2.8.2
+
+# Jupyter
+jupyter>=1.0.0
+ipykernel>=6.27.0
+ipywidgets>=8.1.0
+
+# Optional: PyTorch Utilities
+pytorch-lightning>=2.1.0

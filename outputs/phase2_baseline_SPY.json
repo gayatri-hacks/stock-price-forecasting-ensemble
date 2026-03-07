@@ -1,0 +1,7 @@
+{
+    "SPY": {
+        "ARIMA_RMSE": 139.1101887610457,
+        "SARIMA_RMSE": 0,
+        "Prophet_RMSE": 27.16431028670257
+    }
+}

@@ -1,0 +1,34 @@
+{
+    "NVDA": {
+        "ARIMA_7D": {
+            "total_return": -0.018487487903037225,
+            "sharpe_ratio": 0.6937878537392452,
+            "max_drawdown": -0.08131446843539943,
+            "num_trades": 29
+        },
+        "SARIMA_7D": {
+            "total_return": -0.011113081393812896,
+            "sharpe_ratio": 0.6833459420050079,
+            "max_drawdown": -0.07391746410227906,
+            "num_trades": 37
+        },
+        "Prophet_30D": {
+            "total_return": 0.04943705896937893,
+            "sharpe_ratio": 1.559620300977576,
+            "max_drawdown": -0.11849079083392998,
+            "num_trades": 16
+        },
+        "LSTM_7D": {
+            "total_return": 0.06529765417407314,
+            "sharpe_ratio": 1.3768676382217055,
+            "max_drawdown": -0.011788779126004224,
+            "num_trades": 37
+        },
+        "Transformer_30D": {
+            "total_return": -0.030676210139332426,
+            "sharpe_ratio": 0.7457164113387023,
+            "max_drawdown": -0.08181265243377259,
+            "num_trades": 25
+        }
+    }
+}

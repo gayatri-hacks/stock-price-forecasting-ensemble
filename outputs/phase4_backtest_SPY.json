@@ -1,0 +1,34 @@
+{
+    "SPY": {
+        "ARIMA_7D": {
+            "total_return": 0.02961346769200164,
+            "sharpe_ratio": 0.551946063379827,
+            "max_drawdown": -0.1341921472604641,
+            "num_trades": 37
+        },
+        "SARIMA_7D": {
+            "total_return": 0.032640868551455496,
+            "sharpe_ratio": 1.4017238425367968,
+            "max_drawdown": -0.027464013496785556,
+            "num_trades": 44
+        },
+        "Prophet_30D": {
+            "total_return": 0.0418851582991092,
+            "sharpe_ratio": 0.8611458341605678,
+            "max_drawdown": -0.1509009715306339,
+            "num_trades": 1
+        },
+        "LSTM_7D": {
+            "total_return": 0.011388701713461888,
+            "sharpe_ratio": 0.9849480888425113,
+            "max_drawdown": -0.1744801434389643,
+            "num_trades": 20
+        },
+        "Transformer_30D": {
+            "total_return": 0.06238437766087669,
+            "sharpe_ratio": 0.6648903586554333,
+            "max_drawdown": -0.09764008254708148,
+            "num_trades": 32
+        }
+    }
+}

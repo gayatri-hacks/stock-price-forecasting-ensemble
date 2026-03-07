@@ -1,0 +1,7 @@
+{
+    "NVDA": {
+        "ARIMA_RMSE": 68.65944113264487,
+        "SARIMA_RMSE": 0,
+        "Prophet_RMSE": 23.81157432600604
+    }
+}

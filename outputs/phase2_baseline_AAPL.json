@@ -1,0 +1,7 @@
+{
+    "AAPL": {
+        "ARIMA_RMSE": 40.60276063592396,
+        "SARIMA_RMSE": 0,
+        "Prophet_RMSE": 74.55387745306544
+    }
+}

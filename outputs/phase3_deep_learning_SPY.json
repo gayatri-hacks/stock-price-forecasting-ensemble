@@ -1,0 +1,10 @@
+{
+    "SPY": {
+        "LSTM_RMSE": 0.24564187228679657,
+        "LSTM_MAE": 0.24035567045211792,
+        "LSTM_Directional_Accuracy": 0.5309734513274337,
+        "Transformer_RMSE": 0.586338996887207,
+        "Transformer_MAE": 0.5668488144874573,
+        "Transformer_Directional_Accuracy": 0.46798029556650245
+    }
+}

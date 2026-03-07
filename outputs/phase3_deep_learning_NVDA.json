@@ -1,0 +1,10 @@
+{
+    "NVDA": {
+        "LSTM_RMSE": 6.214153289794922,
+        "LSTM_MAE": 5.8923258781433105,
+        "LSTM_Directional_Accuracy": 0.49557522123893805,
+        "Transformer_RMSE": 2.322178363800049,
+        "Transformer_MAE": 2.226961135864258,
+        "Transformer_Directional_Accuracy": 0.4975369458128079
+    }
+}
