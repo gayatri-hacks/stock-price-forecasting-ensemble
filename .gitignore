@@ -40,6 +40,8 @@ MANIFEST
 # outputs/
 # data/
 # models/
+outputs/verified/
+data/verified/
 
 # OS
 .DS_Store
