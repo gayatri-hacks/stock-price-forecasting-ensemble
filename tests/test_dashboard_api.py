@@ -50,3 +50,12 @@ def test_tampered_manifest_artifacts_are_not_served(tmp_path, monkeypatch):
     (tmp_path / "forecast_metrics.csv").write_text("tampered\n")
     read_csv.cache_clear()
     assert c.get("/api/forecast-metrics").status_code == 503
+    assert c.get("/api/reports/FINANCIAL_ANALYTICS_REPORT.md").status_code == 503
+    assert c.get("/api/manifest").status_code == 503
+
+
+def test_ready_is_clean_for_missing_or_corrupt_manifest(tmp_path, monkeypatch):
+    monkeypatch.setenv("VERIFIED_OUTPUT_DIR", str(tmp_path)); read_csv.cache_clear(); c = TestClient(app)
+    assert c.get("/ready").json() == {"ready": False, "dataset_available": False}
+    (tmp_path / "manifest.json").write_text("not json")
+    assert c.get("/ready").json() == {"ready": False, "dataset_available": False}

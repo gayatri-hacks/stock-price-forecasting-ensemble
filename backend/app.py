@@ -55,7 +55,11 @@ def identity() -> str:
     manifest = output_dir() / "manifest.json"
     if not manifest.is_file():
         raise unavailable("No verified manifest is available; refusing to serve unprovenanced results.")
-    if not verify_manifest(manifest):
+    try:
+        verified = verify_manifest(manifest)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise unavailable("Manifest cannot be verified; refusing to serve artifacts.") from error
+    if not verified:
         raise unavailable("Manifest integrity verification failed; refusing to serve tampered or stale artifacts.")
     return hashlib.sha256(manifest.read_bytes()).hexdigest()
 
@@ -80,9 +84,8 @@ def health() -> dict: return {"status": "ok"}
 @app.get("/ready")
 def ready() -> dict:
     try:
-        path = output_dir() / "manifest.json"
-        return {"ready": verify_manifest(path), "dataset_available": True, "run_identity": identity()}
-    except HTTPException:
+        return {"ready": True, "dataset_available": True, "run_identity": identity()}
+    except (HTTPException, OSError, ValueError, json.JSONDecodeError):
         return {"ready": False, "dataset_available": False}
 
 @app.get("/api/datasets")
@@ -152,13 +155,17 @@ def provenance() -> dict:
 
 @app.get("/api/manifest")
 def manifest() -> dict:
+    identity()
     path = output_dir() / "manifest.json"
-    if not path.is_file(): raise unavailable()
-    return {"manifest": json.loads(path.read_text()), "verified": verify_manifest(path)}
+    try:
+        return {"manifest": json.loads(path.read_text()), "verified": True}
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise unavailable("Manifest cannot be read safely.") from error
 
 @app.get("/api/reports/{filename}")
 def report(filename: str):
     if filename not in APPROVED_FILES: raise HTTPException(404, "File is not approved for download")
+    identity()
     path = output_dir() / filename
     if not path.is_file(): raise unavailable("Approved output is not available")
     return FileResponse(path, filename=filename)
