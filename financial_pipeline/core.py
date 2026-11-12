@@ -4,10 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 import hashlib, json
+import re
 import numpy as np
 import pandas as pd
 
 REQUIRED_COLUMNS = ("Open", "High", "Low", "Close", "Volume")
+REQUIRED_MANIFEST_FIELDS = frozenset({"schema_version", "data_provider", "price_semantics", "requested_start", "requested_end_exclusive", "model_configuration", "split_ratios", "transaction_cost_bps", "input_data_sha256", "input_mode", "input_snapshot_provenance", "output_sha256"})
+MANDATORY_OUTPUTS = frozenset({"FINANCIAL_ANALYTICS_REPORT.md", "forecast_metrics.csv", "strategy_metrics.csv", "model_selection.csv"})
+SHA256_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 
 @dataclass(frozen=True)
 class Split:
@@ -146,9 +150,20 @@ def file_sha256(path: Path) -> str: return hashlib.sha256(path.read_bytes()).hex
 def write_manifest(output_dir: Path, manifest: dict) -> Path:
     hashes={p.name:file_sha256(p) for p in sorted(output_dir.iterdir()) if p.is_file() and p.name!="manifest.json"}; path=output_dir/"manifest.json"; path.write_text(json.dumps({**manifest,"output_sha256":hashes},indent=2,sort_keys=True)+"\n"); return path
 def verify_manifest(path: Path) -> bool:
-    """Return false when any manifest-listed output has changed or disappeared."""
-    manifest=json.loads(path.read_text())
-    return all((path.parent/name).is_file() and file_sha256(path.parent/name)==digest for name,digest in manifest.get("output_sha256",{}).items())
+    """Validate manifest schema and every allowlisted output hash without raising."""
+    try:
+        manifest = json.loads(path.read_text())
+        if not isinstance(manifest, dict) or not REQUIRED_MANIFEST_FIELDS.issubset(manifest): return False
+        hashes = manifest["output_sha256"]
+        if not isinstance(hashes, dict) or not hashes or not MANDATORY_OUTPUTS.issubset(hashes): return False
+        for name, digest in hashes.items():
+            candidate = Path(name)
+            if not isinstance(name, str) or candidate.name != name or name in {"", ".", ".."} or not SHA256_PATTERN.fullmatch(str(digest)): return False
+            artifact = path.parent / candidate
+            if not artifact.is_file() or file_sha256(artifact) != digest: return False
+        return True
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return False
 def export_csvs(output_dir: Path, quality: pd.DataFrame, forecasts: pd.DataFrame, strategies: pd.DataFrame, selections: pd.DataFrame) -> None:
     output_dir.mkdir(parents=True,exist_ok=True)
     for name,frame in {"data_quality_summary.csv":quality,"forecast_metrics.csv":forecasts,"strategy_metrics.csv":strategies,"model_selection.csv":selections}.items(): frame.to_csv(output_dir/name,index=False)

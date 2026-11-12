@@ -20,7 +20,7 @@ def fixture_run(path: Path) -> None:
         for model in ("persistence", "moving_average_20", "ridge_autoregression"):
             for cost in (0, 5, 10, 20): pd.DataFrame({"Date": ["2024-05-01"], "equity": [1.01], "gross_return": [.01], "net_return": [.009], "drawdown": [-.01]}).to_csv(path / f"{ticker}_{model}_{cost}bps_backtest_ledger.csv", index=False)
     (path / "FINANCIAL_ANALYTICS_REPORT.md").write_text("fixture report, not market data")
-    write_manifest(path, {"input_mode": "test fixture, not market data", "input_snapshot_provenance": []})
+    write_manifest(path, {"schema_version": 1, "data_provider": "test fixture, not market data", "price_semantics": "not market data", "requested_start": "2024-01-01", "requested_end_exclusive": "2024-06-02", "model_configuration": {}, "split_ratios": {}, "transaction_cost_bps": [0, 5, 10, 20], "input_data_sha256": {}, "input_mode": "test fixture, not market data", "input_snapshot_provenance": []})
 
 
 def client(tmp_path, monkeypatch):

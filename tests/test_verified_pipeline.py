@@ -114,10 +114,27 @@ def test_csv_exports_and_report_generation(tmp_path):
 
 
 def test_manifest_hashes_outputs(tmp_path):
+    for name in ("FINANCIAL_ANALYTICS_REPORT.md", "forecast_metrics.csv", "strategy_metrics.csv", "model_selection.csv"):
+        (tmp_path / name).write_text("verified artifact\n")
     artifact = tmp_path / "a.csv"; artifact.write_text("x\n1\n")
-    manifest = write_manifest(tmp_path, {"schema_version": 1})
+    manifest = write_manifest(tmp_path, {"schema_version": 1, "data_provider": "Yahoo Finance via yfinance", "price_semantics": "unadjusted", "requested_start": "2024-01-01", "requested_end_exclusive": "2024-02-01", "model_configuration": {}, "split_ratios": {}, "transaction_cost_bps": [0, 5, 10, 20], "input_data_sha256": {}, "input_mode": "offline_snapshot", "input_snapshot_provenance": []})
     contents = __import__("json").loads(manifest.read_text())
     assert contents["output_sha256"]["a.csv"]
     assert verify_manifest(manifest)
     artifact.write_text("changed\n")
     assert not verify_manifest(manifest)
+
+
+def test_manifest_rejects_incomplete_schema_hashes_and_unsafe_paths(tmp_path):
+    path = tmp_path / "manifest.json"
+    path.write_text("{}")
+    assert not verify_manifest(path)
+    valid = {"schema_version": 1, "data_provider": "Yahoo Finance via yfinance", "price_semantics": "unadjusted", "requested_start": "2024-01-01", "requested_end_exclusive": "2024-02-01", "model_configuration": {}, "split_ratios": {}, "transaction_cost_bps": [0], "input_data_sha256": {}, "input_mode": "offline_snapshot", "input_snapshot_provenance": []}
+    path.write_text(__import__("json").dumps({**valid, "output_sha256": {}}))
+    assert not verify_manifest(path)
+    bad_hashes = {name: "not-a-sha" for name in ("FINANCIAL_ANALYTICS_REPORT.md", "forecast_metrics.csv", "strategy_metrics.csv", "model_selection.csv")}
+    path.write_text(__import__("json").dumps({**valid, "output_sha256": bad_hashes}))
+    assert not verify_manifest(path)
+    bad_hashes["../unsafe.csv"] = "0" * 64
+    path.write_text(__import__("json").dumps({**valid, "output_sha256": bad_hashes}))
+    assert not verify_manifest(path)
