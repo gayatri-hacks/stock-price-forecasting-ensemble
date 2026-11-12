@@ -8,6 +8,8 @@ This repository preserves the original five-phase forecasting research while add
 
 The repository includes a React/TypeScript dashboard and read-only FastAPI API over completed verified runs. It does not train models or manufacture market values. See [local setup](docs/LOCAL_SETUP.md), [web architecture](docs/WEB_ARCHITECTURE.md), and [API contract](docs/API_CONTRACT.md). When no genuine run exists, the API/UI explicitly report Dataset unavailable.
 
+For local development, start FastAPI from the repository root on port 8000, then run Vite from `dashboard/`. Vite proxies `/api`, `/health`, and `/ready` to FastAPI; an HTML-instead-of-JSON UI error means that backend/proxy connection should be checked.
+
 The supported workflow uses actual daily OHLCV records for AAPL, NVDA and SPY from Yahoo Finance through `yfinance`. The default request window is 2020-01-01 through 2025-12-30 (the yfinance `end` argument is exclusive).
 
 ```bash

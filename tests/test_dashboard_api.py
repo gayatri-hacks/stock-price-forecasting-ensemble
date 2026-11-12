@@ -43,3 +43,10 @@ def test_verified_artifact_endpoints_and_validation(tmp_path, monkeypatch):
     assert c.get("/api/predictions", params={"ticker": "BAD"}).status_code == 422
     assert c.get("/api/predictions", params={"ticker": "AAPL", "start_date": "2025-01-01", "end_date": "2024-01-01"}).status_code == 422
     assert c.get("/api/reports/../../README.md").status_code == 404
+
+
+def test_tampered_manifest_artifacts_are_not_served(tmp_path, monkeypatch):
+    c = client(tmp_path, monkeypatch)
+    (tmp_path / "forecast_metrics.csv").write_text("tampered\n")
+    read_csv.cache_clear()
+    assert c.get("/api/forecast-metrics").status_code == 503

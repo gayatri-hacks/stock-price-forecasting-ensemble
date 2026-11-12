@@ -55,6 +55,8 @@ def identity() -> str:
     manifest = output_dir() / "manifest.json"
     if not manifest.is_file():
         raise unavailable("No verified manifest is available; refusing to serve unprovenanced results.")
+    if not verify_manifest(manifest):
+        raise unavailable("Manifest integrity verification failed; refusing to serve tampered or stale artifacts.")
     return hashlib.sha256(manifest.read_bytes()).hexdigest()
 
 
@@ -144,6 +146,7 @@ def data_quality(ticker: str | None = None) -> dict: return datasets() if ticker
 
 @app.get("/api/provenance")
 def provenance() -> dict:
+    identity()
     manifest = json.loads((output_dir() / "manifest.json").read_text())
     return {"input_mode": manifest.get("input_mode"), "snapshots": manifest.get("input_snapshot_provenance", []), "warning": "A declared provider and matching hash establish integrity, not independent origin verification."}
 

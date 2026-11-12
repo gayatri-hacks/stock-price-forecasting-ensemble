@@ -4,8 +4,8 @@ import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query"
 import {BrowserRouter} from "react-router-dom";
 import {LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar} from "recharts";
 import "./styles.css";
+import {api} from "./lib/api";
 
-const api = async <T,>(path:string):Promise<T> => { const r=await fetch(`/api${path}`); if(!r.ok) throw new Error((await r.json()).detail || "Dataset unavailable"); return r.json(); };
 type Metric={model:string;mae:number;rmse:number;nrmse_pct:number;mape_pct:number;directional_accuracy:number;skill_vs_persistence_mae:number;observations:number};
 const fmt=(n:number|undefined, d=2)=>n===undefined?"—":n.toLocaleString(undefined,{maximumFractionDigits:d});
 const savedTicker=()=>{try{return globalThis.localStorage?.getItem("ticker")||"AAPL"}catch{return "AAPL"}};
