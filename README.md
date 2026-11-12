@@ -15,12 +15,23 @@ pytest -q tests
 python main.py --start 2020-01-01 --end 2025-12-31
 ```
 
+To replay a previously saved, provenance-marked genuine Yahoo Finance snapshot without network access, use:
+
+```bash
+python main.py --snapshot-dir /path/to/prior/verified-output --output-dir outputs/replay
+```
+
+Replay requires each `*_input_snapshot.csv` and its matching
+`*_input_snapshot.metadata.json`; hashes and OHLCV validation must match. Test
+fixtures are deliberately rejected as market-data snapshots.
+
 This writes a self-contained run under `outputs/verified/`:
 
-- `EY_EXECUTIVE_REPORT.md` — business objective, data controls, held-out forecasting results, strategy results, risks and conclusion.
+- `FINANCIAL_ANALYTICS_REPORT.md` — business objective, data controls, held-out forecasting results, strategy results, risks and conclusion.
 - `data_quality_summary.csv` — source, ticker, requested range, actual coverage, records, null and duplicate checks.
 - `forecast_metrics.csv` and `strategy_metrics.csv` — deliberately separate model accuracy from illustrative strategy metrics.
-- `*_held_out_predictions.csv` and `*_backtest_ledger.csv` — date-level audit trails.
+- `*_input_snapshot.csv`, `*_held_out_predictions.csv` and `*_backtest_ledger.csv` — date-level audit trails.
+- `manifest.json` — input and output SHA-256 hashes, source semantics, split/model configuration and cost settings.
 - `forecast_rmse_by_ticker.png` — report chart.
 
 The pipeline fails rather than fabricating data when a download is unavailable or invalid. Raw quotes are intentionally not versioned: Yahoo Finance may revise its history, so the quality summary documents the exact run coverage.
@@ -32,7 +43,7 @@ The pipeline fails rather than fabricating data when a download is unavailable o
 - Splits are contiguous: 60% train, 20% validation, 20% held-out test. Any scaler parameters are fitted on training data alone.
 - A persistence forecast is the primary historical baseline. A 20-day moving average and a small ridge autoregression are compared on exactly the same test dates. Ridge regularisation is selected on validation only, then refit on train + validation before one final held-out test evaluation.
 - Forecasts use prices available through the preceding close to predict the next close. No test target is used in a feature or model selection decision.
-- The illustrative long/flat strategy makes a position decision from the prior-close forecast, uses close-to-close returns, and deducts 5 basis points per turnover. Sharpe uses all daily strategy returns; drawdown and trade count are derived from the exported ledger.
+- The illustrative long/flat strategy makes a position decision from the prior-close forecast, buys at that day's open and sells at its close. It is flat overnight, so every long session pays both an entry and exit cost; 0/5/10/20 bps are per side. Sharpe uses all daily net strategy returns; drawdown is measured from initial equity of 1.0.
 
 ## Audit outcome of legacy research files
 

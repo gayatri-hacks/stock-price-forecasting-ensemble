@@ -25,7 +25,7 @@ def generate_report(output_dir: Path, quality: pd.DataFrame, forecasts: pd.DataF
     pivot.plot(kind="bar", figsize=(10, 5), title="Held-out forecast RMSE (lower is better)")
     plt.ylabel("USD per share")
     plt.tight_layout(); plt.savefig(chart, dpi=150); plt.close()
-    report = output_dir / "EY_EXECUTIVE_REPORT.md"
+    report = output_dir / "FINANCIAL_ANALYTICS_REPORT.md"
     report.write_text("""# Financial Analytics Executive Report
 
 ## Business objective
@@ -42,13 +42,13 @@ Daily OHLCV is retrieved from Yahoo Finance through yfinance. Dates are preserve
 
 ## Historical forecasting performance
 
-Metrics below use held-out test dates only. They are model-error metrics, not trading returns.
+Metrics below use held-out test dates only. Raw-dollar RMSE is not comparable across securities with different price levels; use NRMSE/MAPE for scale-aware comparison. Skill is relative to persistence MAE. They are model-error metrics, not trading returns.
 
 """ + _markdown_table(forecasts, ".4f") + """
 
 ## Strategy backtest (separate from model accuracy)
 
-The illustrative close-to-close long/flat policy uses the forecast made with information available at the preceding close. It charges 5 basis points for each unit of turnover and reports only historical results.
+The illustrative long/flat policy makes its signal after the preceding close, buys at the next available open, and sells at that session's close. It is flat overnight: each long session pays both entry and exit costs, with a 0/5/10/20 basis-point per-side sensitivity. This is not a tradability claim.
 
 """ + _markdown_table(strategies, ".4f") + """
 
@@ -57,6 +57,7 @@ The illustrative close-to-close long/flat policy uses the forecast made with inf
 - Yahoo Finance is a convenient public source and may revise historical records; reruns can differ.
 - Results cover a single historical sample and do not establish forecasting skill, causality, or investability.
 - The backtest excludes taxes, borrow costs, market impact, intraday execution uncertainty, and corporate-action verification.
+- Input snapshots, date-level ledgers, model-selection records and a SHA-256 manifest are written with every run. Yahoo data can be revised, so separate source-data changes from code changes.
 - Deep-learning legacy phases were not used in the verified report: their labels and target alignment require separate redevelopment.
 - Executive conclusion: use the exported tables for transparent comparison; do not infer guaranteed returns or select a model solely from one sample.
 """)

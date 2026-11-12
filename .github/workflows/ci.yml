@@ -11,8 +11,12 @@ jobs:
         with: {python-version: "3.12"}
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
+      - name: Compile supported pipeline
+        run: python -m compileall -q main.py financial_pipeline
       # ``python -m`` places the repository root on sys.path, allowing the
       # in-repository financial_pipeline package to be imported during collection.
       - run: python -m pytest -q tests
       - name: Fixture integration smoke test
         run: python -m pytest -q tests/test_verified_pipeline.py::test_csv_exports_and_report_generation
+      - name: Manifest integrity smoke test
+        run: python -m pytest -q tests/test_verified_pipeline.py::test_manifest_hashes_outputs

@@ -1,0 +1,3 @@
+# Backtest assumptions
+
+A forecast for *t* is assumed available after the close of *t-1*. A long signal buys at *t*'s opening price and sells at *t*'s close; it is flat overnight. Each long session therefore has one entry and one exit, turnover of 2.0, and two per-side costs at 0, 5, 10, or 20 bps. Gross return is `Close / Open - 1`; net return deducts both costs. Equity compounds from initial capital of 1.0, and drawdown uses a high-water mark that includes that initial value. This illustrative backtest omits spreads, impact, taxes, financing, partial fills and corporate-action reconciliation; it is not evidence of tradability or profitability.
