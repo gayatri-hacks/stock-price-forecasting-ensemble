@@ -48,7 +48,7 @@ Metrics below use held-out test dates only. Raw-dollar RMSE is not comparable ac
 
 ## Strategy backtest (separate from model accuracy)
 
-The illustrative long/flat policy makes its signal after the preceding close, fills at the next available open, and earns that session's open-to-close return. It reports a 0/5/10/20 basis-point turnover-cost sensitivity; this is not a tradability claim.
+The illustrative long/flat policy makes its signal after the preceding close, buys at the next available open, and sells at that session's close. It is flat overnight: each long session pays both entry and exit costs, with a 0/5/10/20 basis-point per-side sensitivity. This is not a tradability claim.
 
 """ + _markdown_table(strategies, ".4f") + """
 

@@ -57,6 +57,31 @@ def download_market_data(ticker: str, start: str, end: str) -> pd.DataFrame:
         raise RuntimeError(f"Yahoo Finance returned no data for {ticker} ({start} to {end}); check ticker, dates, or provider availability")
     data = normalise_yfinance_frame(raw, ticker); validate_market_data(data); return data
 
+def save_market_snapshot(data: pd.DataFrame, destination: Path, ticker: str, start: str, end: str) -> dict:
+    """Persist a genuine, validated Yahoo snapshot and its origin metadata."""
+    quality = validate_market_data(data)
+    csv_path = destination / f"{ticker}_input_snapshot.csv"
+    data.to_csv(csv_path, index_label="Date")
+    metadata = {"ticker": ticker, "provider": "Yahoo Finance via yfinance", "price_semantics": "unadjusted OHLC (auto_adjust=False)", "requested_start": start, "requested_end_exclusive": end, "source_data_sha256": file_sha256(csv_path), **quality}
+    (destination / f"{ticker}_input_snapshot.metadata.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+    return metadata
+
+def load_market_snapshot(snapshot_dir: Path, ticker: str) -> tuple[pd.DataFrame, dict]:
+    """Load only a provenance-marked genuine Yahoo snapshot; validate it like live data."""
+    csv_path = snapshot_dir / f"{ticker}_input_snapshot.csv"
+    metadata_path = snapshot_dir / f"{ticker}_input_snapshot.metadata.json"
+    if not csv_path.is_file() or not metadata_path.is_file():
+        raise ValueError(f"Snapshot for {ticker} requires both CSV and provenance metadata")
+    metadata = json.loads(metadata_path.read_text())
+    if metadata.get("ticker") != ticker or metadata.get("provider") != "Yahoo Finance via yfinance":
+        raise ValueError(f"Snapshot for {ticker} is not a provenance-marked genuine Yahoo Finance snapshot")
+    if metadata.get("source_data_sha256") != file_sha256(csv_path):
+        raise ValueError(f"Snapshot SHA-256 mismatch for {ticker}")
+    data = pd.read_csv(csv_path, index_col="Date", parse_dates=["Date"])
+    data.index.name = "Date"
+    validate_market_data(data)
+    return data, metadata
+
 def chronological_split(frame: pd.DataFrame, train_ratio: float=.60, validation_ratio: float=.20) -> Split:
     if not 0 < train_ratio < 1 or not 0 < validation_ratio < 1 or train_ratio+validation_ratio >= 1: raise ValueError("Split ratios must be positive and leave a test partition")
     a,b=int(len(frame)*train_ratio),int(len(frame)*(train_ratio+validation_ratio)); out=Split(frame.iloc[:a].copy(),frame.iloc[a:b].copy(),frame.iloc[b:].copy())
@@ -102,12 +127,20 @@ def forecasting_metrics(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 def backtest_long_flat(predictions: pd.DataFrame, model: str, cost_bps: float=5.) -> tuple[pd.DataFrame,dict]:
-    """Prior-close forecast signal, next available open fill, then open-to-close return."""
+    """Intraday flat-to-flat: open and close a long on every signalled session."""
     need={"actual_close","actual_open","previous_close",model}
     if cost_bps<0 or not need.issubset(predictions): raise ValueError("Backtest requires nonnegative cost plus open, close, previous close and forecast")
-    p=predictions; position=(p[model]>p.previous_close).astype(float); turnover=position.diff().abs().fillna(position); gross=position*(p.actual_close/p.actual_open-1); net=gross-turnover*cost_bps/10000; equity=(1+net).cumprod(); dd=equity/equity.cummax()-1; vol=net.std(ddof=1); sharpe=float(np.sqrt(252)*net.mean()/vol) if pd.notna(vol) and vol else 0.
-    ledger=pd.DataFrame({"actual_open":p.actual_open,"actual_close":p.actual_close,"previous_close":p.previous_close,"forecast":p[model],"position":position,"turnover":turnover,"gross_return":gross,"net_return":net,"equity":equity,"drawdown":dd})
-    return ledger,{"model":model,"execution_convention":"prior_close_signal_next_open_to_close","total_return_pct":float((equity.iloc[-1]-1)*100),"annualized_sharpe":sharpe,"max_drawdown_pct":float(dd.min()*100),"trade_count":int(turnover.sum()),"cost_bps_per_turnover":cost_bps,"observations":len(ledger)}
+    p=predictions; position=(p[model]>p.previous_close).astype(float)
+    entry_turnover, exit_turnover = position, position
+    turnover = entry_turnover + exit_turnover
+    gross = position * (p.actual_close / p.actual_open - 1)
+    transaction_cost = turnover * cost_bps / 10_000
+    net = gross - transaction_cost; equity = (1 + net).cumprod()
+    high_water_mark = pd.Series(np.maximum.accumulate(np.r_[1.0, equity.to_numpy()])[1:], index=equity.index)
+    dd = equity / high_water_mark - 1; vol = net.std(ddof=1)
+    sharpe=float(np.sqrt(252)*net.mean()/vol) if pd.notna(vol) and vol else 0.
+    ledger=pd.DataFrame({"actual_open":p.actual_open,"actual_close":p.actual_close,"previous_close":p.previous_close,"forecast":p[model],"position":position,"entry_turnover":entry_turnover,"exit_turnover":exit_turnover,"turnover":turnover,"gross_return":gross,"transaction_cost":transaction_cost,"net_return":net,"equity":equity,"drawdown":dd})
+    return ledger,{"model":model,"execution_convention":"prior_close_signal_open_to_close_flat_each_session","total_return_pct":float((equity.iloc[-1]-1)*100),"annualized_sharpe":sharpe,"max_drawdown_pct":float(dd.min()*100),"trade_count":int(position.sum()),"turnover":float(turnover.sum()),"cost_bps_per_side":cost_bps,"observations":len(ledger)}
 
 def file_sha256(path: Path) -> str: return hashlib.sha256(path.read_bytes()).hexdigest()
 def write_manifest(output_dir: Path, manifest: dict) -> Path:

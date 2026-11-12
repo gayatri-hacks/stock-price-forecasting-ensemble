@@ -15,6 +15,16 @@ pytest -q tests
 python main.py --start 2020-01-01 --end 2025-12-31
 ```
 
+To replay a previously saved, provenance-marked genuine Yahoo Finance snapshot without network access, use:
+
+```bash
+python main.py --snapshot-dir /path/to/prior/verified-output --output-dir outputs/replay
+```
+
+Replay requires each `*_input_snapshot.csv` and its matching
+`*_input_snapshot.metadata.json`; hashes and OHLCV validation must match. Test
+fixtures are deliberately rejected as market-data snapshots.
+
 This writes a self-contained run under `outputs/verified/`:
 
 - `FINANCIAL_ANALYTICS_REPORT.md` — business objective, data controls, held-out forecasting results, strategy results, risks and conclusion.
@@ -33,7 +43,7 @@ The pipeline fails rather than fabricating data when a download is unavailable o
 - Splits are contiguous: 60% train, 20% validation, 20% held-out test. Any scaler parameters are fitted on training data alone.
 - A persistence forecast is the primary historical baseline. A 20-day moving average and a small ridge autoregression are compared on exactly the same test dates. Ridge regularisation is selected on validation only, then refit on train + validation before one final held-out test evaluation.
 - Forecasts use prices available through the preceding close to predict the next close. No test target is used in a feature or model selection decision.
-- The illustrative long/flat strategy makes a position decision from the prior-close forecast, fills at the next available opening price, earns open-to-close returns, and reports 0/5/10/20 basis-point turnover-cost sensitivity. Sharpe uses all daily strategy returns; drawdown and trade count are derived from the exported ledger.
+- The illustrative long/flat strategy makes a position decision from the prior-close forecast, buys at that day's open and sells at its close. It is flat overnight, so every long session pays both an entry and exit cost; 0/5/10/20 bps are per side. Sharpe uses all daily net strategy returns; drawdown is measured from initial equity of 1.0.
 
 ## Audit outcome of legacy research files
 

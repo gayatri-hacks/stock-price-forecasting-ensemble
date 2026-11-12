@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from financial_pipeline.core import (backtest_long_flat, build_lagged_features, chronological_split, export_csvs, fit_standardizer,
-    forecast_models, forecasting_metrics, normalise_yfinance_frame, validate_market_data, verify_manifest, write_manifest)
+    forecast_models, forecasting_metrics, load_market_snapshot, normalise_yfinance_frame, validate_market_data, verify_manifest, write_manifest)
 from financial_pipeline.report import generate_report
 
 
@@ -69,13 +69,36 @@ def test_features_and_earlier_forecasts_do_not_depend_on_future_data():
     assert features.iloc[0].lag_1 == frame.Close.iloc[19]
 
 
-def test_backtest_charges_turnover_and_uses_no_future_actual_for_signal():
+def test_intraday_backtest_has_hand_calculated_round_trip_costs_and_initial_equity():
     dates = pd.bdate_range("2024-01-01", periods=4)
-    predictions = pd.DataFrame({"actual_open": [100, 109, 101, 109], "actual_close": [100, 110, 100, 110], "previous_close": [99, 100, 110, 100], "model": [100, 101, 109, 99]}, index=dates)
+    predictions = pd.DataFrame({"actual_open": [100, 100, 100, 100], "actual_close": [110, 90, 120, 105], "previous_close": [99, 100, 100, 100], "model": [101, 101, 99, 101]}, index=dates)
     ledger, metrics = backtest_long_flat(predictions, "model", cost_bps=10)
-    assert metrics["trade_count"] == int(ledger["turnover"].sum())
+    # Long, long, flat, long: each long session is independently bought and sold.
+    assert ledger["position"].tolist() == [1., 1., 0., 1.]
+    assert ledger["turnover"].tolist() == [2., 2., 0., 2.]
+    assert ledger["transaction_cost"].tolist() == pytest.approx([.002, .002, 0., .002])
+    assert ledger["gross_return"].tolist() == pytest.approx([.10, -.10, 0., .05])
+    assert ledger["net_return"].tolist() == pytest.approx([.098, -.102, 0., .048])
+    assert ledger.iloc[0]["equity"] == pytest.approx(1.098)  # measured from initial capital of 1.0
+    assert ledger.iloc[1]["drawdown"] == pytest.approx((1.098 * .898) / 1.098 - 1)
+    assert metrics["trade_count"] == 3
+    assert metrics["turnover"] == 6
     assert (ledger["net_return"] <= ledger["gross_return"]).all()
     assert metrics["max_drawdown_pct"] <= 0
+
+
+def test_intraday_cost_sensitivity_is_two_sides_per_long_session():
+    dates = pd.bdate_range("2024-01-01", periods=1)
+    predictions = pd.DataFrame({"actual_open": [100], "actual_close": [101], "previous_close": [99], "model": [100]}, index=dates)
+    returns = [backtest_long_flat(predictions, "model", cost)[0].iloc[0].net_return for cost in (0, 5, 10, 20)]
+    assert returns == pytest.approx([.01, .009, .008, .006])
+
+
+def test_offline_snapshot_rejects_unprovenanced_or_fixture_data(tmp_path):
+    fixture_frame(120).to_csv(tmp_path / "AAPL_input_snapshot.csv", index_label="Date")
+    (tmp_path / "AAPL_input_snapshot.metadata.json").write_text('{"ticker":"AAPL", "provider":"test fixture, not market data"}')
+    with pytest.raises(ValueError, match="genuine Yahoo Finance"):
+        load_market_snapshot(tmp_path, "AAPL")
 
 
 def test_csv_exports_and_report_generation(tmp_path):

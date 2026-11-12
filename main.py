@@ -12,28 +12,32 @@ import pandas as pd
 
 from financial_pipeline.core import (backtest_long_flat, chronological_split, download_market_data,
     export_csvs, file_sha256, fit_standardizer, forecast_models, forecasting_metrics,
-    validate_market_data, write_manifest)
+    load_market_snapshot, save_market_snapshot, validate_market_data, write_manifest)
 from financial_pipeline.report import generate_report
 
 
-def run_verified(start: str = "2020-01-01", end: str = "2025-12-31", output_dir: str = "outputs/verified") -> dict:
+def run_verified(start: str = "2020-01-01", end: str = "2025-12-31", output_dir: str = "outputs/verified", snapshot_dir: str | None = None) -> dict:
     """Run a bounded real-data analysis. ``end`` is exclusive, per yfinance."""
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
-    quality_rows, forecast_rows, strategy_rows, selection_rows = [], [], [], []
+    quality_rows, forecast_rows, strategy_rows, selection_rows, provenance_rows = [], [], [], [], []
     for ticker in ("AAPL", "NVDA", "SPY"):
-        data = download_market_data(ticker, start, end)
-        # A local snapshot makes this particular run independently replayable;
-        # raw provider data is deliberately not committed to the repository.
-        data.to_csv(destination / f"{ticker}_input_snapshot.csv", index_label="Date")
+        if snapshot_dir:
+            data, provenance = load_market_snapshot(Path(snapshot_dir), ticker)
+            # Copy the verified input and metadata into the run directory for auditability.
+            save_market_snapshot(data, destination, ticker, provenance["requested_start"], provenance["requested_end_exclusive"])
+        else:
+            data = download_market_data(ticker, start, end)
+            provenance = save_market_snapshot(data, destination, ticker, start, end)
         split = chronological_split(data)
         quality = validate_market_data(data)
-        quality.update({"ticker": ticker, "source": "Yahoo Finance via yfinance", "requested_start": start,
-                        "requested_end_exclusive": end, "train_scaler_close": fit_standardizer(split.train)["Close"]["mean"]})
+        quality.update({"ticker": ticker, "source": provenance["provider"], "requested_start": provenance["requested_start"],
+                        "requested_end_exclusive": provenance["requested_end_exclusive"], "train_scaler_close": fit_standardizer(split.train)["Close"]["mean"]})
         predictions, selection = forecast_models(split)
         metrics = forecasting_metrics(predictions); metrics.insert(0, "ticker", ticker)
         selection.insert(0, "ticker", ticker)
         quality_rows.append(quality); forecast_rows.append(metrics); selection_rows.append(selection)
+        provenance_rows.append(provenance)
         for model in ("persistence", "moving_average_20", "ridge_autoregression"):
             for cost_bps in (0.0, 5.0, 10.0, 20.0):
                 ledger, strategy = backtest_long_flat(predictions, model, cost_bps)
@@ -47,10 +51,11 @@ def run_verified(start: str = "2020-01-01", end: str = "2025-12-31", output_dir:
     report = generate_report(destination, quality, forecasts, strategies)
     manifest = write_manifest(destination, {
         "schema_version": 1, "data_provider": "Yahoo Finance via yfinance", "price_semantics": "unadjusted OHLC (auto_adjust=False); corporate actions are not reconciled",
-        "requested_start": start, "requested_end_exclusive": end,
+        "requested_start": start, "requested_end_exclusive": end, "input_mode": "offline_snapshot" if snapshot_dir else "live_download",
         "model_configuration": {"models": ["persistence", "moving_average_20", "ridge_autoregression"], "ridge_alphas": [.01, .1, 1., 10.]},
         "split_ratios": {"train": .6, "validation": .2, "test": .2}, "transaction_cost_bps": [0, 5, 10, 20],
         "input_data_sha256": {ticker: file_sha256(destination / f"{ticker}_input_snapshot.csv") for ticker in ("AAPL", "NVDA", "SPY")},
+        "input_snapshot_provenance": provenance_rows,
     })
     return {"quality": quality, "forecasts": forecasts, "strategies": strategies, "report": report, "manifest": manifest}
 
@@ -60,6 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("--start", default="2020-01-01")
     parser.add_argument("--end", default="2025-12-31", help="exclusive yfinance end date")
     parser.add_argument("--output-dir", default="outputs/verified")
+    parser.add_argument("--snapshot-dir", help="Directory containing provenance-marked genuine Yahoo CSV snapshots; no network download is made")
     args = parser.parse_args()
-    result = run_verified(args.start, args.end, args.output_dir)
+    result = run_verified(args.start, args.end, args.output_dir, args.snapshot_dir)
     print(f"Verified report written to {result['report']}")
