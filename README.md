@@ -17,10 +17,11 @@ python main.py --start 2020-01-01 --end 2025-12-31
 
 This writes a self-contained run under `outputs/verified/`:
 
-- `EY_EXECUTIVE_REPORT.md` — business objective, data controls, held-out forecasting results, strategy results, risks and conclusion.
+- `FINANCIAL_ANALYTICS_REPORT.md` — business objective, data controls, held-out forecasting results, strategy results, risks and conclusion.
 - `data_quality_summary.csv` — source, ticker, requested range, actual coverage, records, null and duplicate checks.
 - `forecast_metrics.csv` and `strategy_metrics.csv` — deliberately separate model accuracy from illustrative strategy metrics.
-- `*_held_out_predictions.csv` and `*_backtest_ledger.csv` — date-level audit trails.
+- `*_input_snapshot.csv`, `*_held_out_predictions.csv` and `*_backtest_ledger.csv` — date-level audit trails.
+- `manifest.json` — input and output SHA-256 hashes, source semantics, split/model configuration and cost settings.
 - `forecast_rmse_by_ticker.png` — report chart.
 
 The pipeline fails rather than fabricating data when a download is unavailable or invalid. Raw quotes are intentionally not versioned: Yahoo Finance may revise its history, so the quality summary documents the exact run coverage.
@@ -32,7 +33,7 @@ The pipeline fails rather than fabricating data when a download is unavailable o
 - Splits are contiguous: 60% train, 20% validation, 20% held-out test. Any scaler parameters are fitted on training data alone.
 - A persistence forecast is the primary historical baseline. A 20-day moving average and a small ridge autoregression are compared on exactly the same test dates. Ridge regularisation is selected on validation only, then refit on train + validation before one final held-out test evaluation.
 - Forecasts use prices available through the preceding close to predict the next close. No test target is used in a feature or model selection decision.
-- The illustrative long/flat strategy makes a position decision from the prior-close forecast, uses close-to-close returns, and deducts 5 basis points per turnover. Sharpe uses all daily strategy returns; drawdown and trade count are derived from the exported ledger.
+- The illustrative long/flat strategy makes a position decision from the prior-close forecast, fills at the next available opening price, earns open-to-close returns, and reports 0/5/10/20 basis-point turnover-cost sensitivity. Sharpe uses all daily strategy returns; drawdown and trade count are derived from the exported ledger.
 
 ## Audit outcome of legacy research files
 
