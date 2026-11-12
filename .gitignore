@@ -16,6 +16,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!dashboard/src/lib/
+!dashboard/src/lib/*.ts
 lib64/
 parts/
 sdist/
@@ -61,3 +63,6 @@ models/
 # Cache
 .cache/
 .pytest_cache/
+dashboard/node_modules/
+dashboard/dist/
+*.tsbuildinfo
